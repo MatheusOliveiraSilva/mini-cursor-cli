@@ -45,7 +45,7 @@ The original Cursor IDE is built on a sophisticated set of AI Engineering featur
 
 ## Delivery Roadmap
 
-### Stage 1: Project Scaffold
+### Stage 1: Project Scaffold (Done ✅)
 
 * **Goal:** Set up project structure, dependencies, and basic tooling.
 * **Deliverable:** Repository scaffold with folders (`indexer/`, `merkle/`, `cli/`, `agent/`), virtual environment config, and CI for linting.
