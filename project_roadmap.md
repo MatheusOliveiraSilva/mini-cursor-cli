@@ -2,99 +2,190 @@
 
 ## Overview
 
-The original Cursor IDE is built on a sophisticated set of AI Engineering features that I want to explore in this side project. This roadmap outlines what I want to build, why I’m building it, and what I aim to learn at each stage.
+This project implements a mini-version of Cursor's architecture, replicating their ingenious use of Merkle trees for incremental indexing, client-server communication, and AI-powered code interaction. Built to understand and learn from Cursor's engineering decisions described in [The Pragmatic Engineer article](https://newsletter.pragmaticengineer.com/p/cursor).
 
 ---
 
-## Key Features
+## Key Architecture (Based on Cursor's Design)
 
-* **Merkle Tree Indexing**: manual implementation of Merkle trees over code chunks, using SHA-256 hashing.
-* **Encrypted Embeddings on Pinecone**: generate embeddings, encrypt them locally, and upsert to Pinecone Free Tier.
-* **Incremental Reindexing**: async file watcher to detect changes and keep the vector index up to date.
-* **Chat-Driven CLI**: REPL using Typer + Rich for interacting with LLMs and showing tool invocations.
-* **Agent Tools**:
-
-  * `read_file(path)`
-  * `search_code(query)`
-  * `edit_file(path, diff)`
-* **Colored Diff Output**: display removed lines in red and added lines in green via Rich.
-* **Async Python 3.12**: leverage the latest async features (`asyncio`, `watchfiles`).
+* **Client-Server Architecture**: CLI client maintains code locally, server handles indexing and LLM queries
+* **Merkle Tree Sync**: Files as leaves, directories as nodes - efficient change detection
+* **Dual Index System**: Merkle trees for change tracking + Vector database for semantic search  
+* **Interactive Chat Loop**: Terminal-based conversation with your codebase
+* **Agent Tools**: `read_file()`, `search_code()`, `edit_file()`, `list_files()` with colored diff output
+* **Incremental Sync**: Compare client/server Merkle trees every 3 minutes, reindex only changes
+* **Privacy-First**: Code never stored on server, only encrypted embeddings
 
 ---
 
 ## Business & Personal Objectives
 
-1. **Explore AI agent engineering**: learn how to map prompts, tools, and action execution in a loop.
-2. **Master indexing pipelines**: build a secure, incremental index from scratch.
-3. **Practice lean MLOps**: deploy with zero infrastructure cost using Pinecone free tier and local execution, simple CI/CD.
-4. **Learn Rust (future phase)**: optionally enhance performance by integrating Rust modules.
-5. **Demonstrate end-to-end capability**: showcase a prototype that goes from chunking code to agent-driven actions.
+1. **Reverse-engineer Cursor's architecture**: Learn how they achieve blazing-fast sync and search
+2. **Master distributed indexing**: Build secure, incremental vector indexing from scratch
+3. **AI Agent Engineering**: Implement tool-calling agents with rich terminal output
+4. **Performance at Scale**: Handle large codebases efficiently using tree traversal algorithms
+5. **End-to-end Implementation**: From file watching to LLM tool execution
 
 ---
 
 ## Learning Goals
 
-* Architecture of vector indexing systems and Merkle Trees.
-* Implementing symmetric encryption to protect embeddings.
-* Building interactive CLI applications with Rich and Typer.
-* Developing LLM-driven agents with tool invocation.
-* Orchestrating Pinecone as a vector database.
-* CI/CD best practices with GitHub Actions and Docker.
+* Merkle trees for distributed system synchronization
+* Client-server communication patterns for AI applications  
+* Vector embeddings and semantic search implementation
+* Building interactive CLI applications with Rich
+* LLM tool-calling and agent orchestration
+* Tree traversal algorithms and hash-based change detection
 
 ---
 
 ## Delivery Roadmap
 
-### Stage 1: Project Scaffold (Done ✅)
+### Stage 1: Correct Merkle Tree Implementation ✅ (Refactor Current)
 
-* **Goal:** Set up project structure, dependencies, and basic tooling.
-* **Deliverable:** Repository scaffold with folders (`indexer/`, `merkle/`, `cli/`, `agent/`), virtual environment config, and CI for linting.
+* **Goal:** Fix current implementation - files as leaves, directories as internal nodes
+* **Current Issue:** Implemented chunks as leaves (wrong approach)
+* **Deliverable:** 
+  - `merkle/tree.py`: Files are leaves with content hash
+  - `merkle/node.py`: Directories hash children recursively  
+  - Unit tests for file/directory tree building
+  - Tree comparison and diff detection methods
 
-### Stage 2: Merkle Tree Implementation
+### Stage 2: Client-Server Foundation
 
-* **Goal:** Manually implement a Merkle Tree in Python using SHA-256.
-* **Deliverable:** `merkle/` module with `add_leaf()`, `get_root()`, and unit tests for odd/even leaf counts.
+* **Goal:** Set up client-server architecture with FastAPI backend
+* **Deliverable:**
+  - `agent/server.py`: FastAPI server for indexing and queries
+  - `cli/client.py`: HTTP client for server communication
+  - `cli/main.py`: Entry point and project detection
+  - Basic health check and project registration endpoints
 
-### Stage 3: Code Chunking & Hashing
+### Stage 3: Code Chunking & Vector Indexing (Server-Side)
 
-* **Goal:** Walk a code directory, split `.py` files into \~500-token chunks, hash each chunk, and feed the Merkle Tree.
-* **Deliverable:** `indexer/chunk_and_hash.py` script producing JSON of `(file, chunk_index, hash)` entries.
+* **Goal:** Server receives code, creates semantic chunks, generates embeddings
+* **Deliverable:**
+  - `agent/chunker.py`: Split files into ~500-token semantic chunks
+  - `agent/embeddings.py`: OpenAI/local embedding generation
+  - `agent/vector_db.py`: Store embeddings (Pinecone or local ChromaDB)
+  - Server Merkle tree to track indexed state
 
-### Stage 4: Embeddings & Pinecone Integration
+### Stage 4: Incremental Sync System
 
-* **Goal:** For each chunk, generate an embedding (OpenAI/Anthropic), encrypt with AES-GCM, and upsert to Pinecone.
-* **Deliverable:** `indexer/pinecone_client.py` with `upsert_chunk(hash, encrypted_embedding)` and round-trip tests.
+* **Goal:** Client-server Merkle tree comparison for efficient reindexing
+* **Deliverable:**
+  - `cli/sync_engine.py`: Build local Merkle tree, compare with server
+  - `agent/sync_handler.py`: Tree comparison and change detection
+  - File watcher integration for real-time change detection
+  - API endpoints: `POST /sync`, `POST /reindex`
 
-### Stage 5: Incremental Reindexing Job
+### Stage 5: Interactive Chat Loop
 
-* **Goal:** Use `watchfiles` to detect file creation/modification/deletion and update Pinecone accordingly.
-* **Deliverable:** `indexer/watcher.py` script running in background with logs of operations.
+* **Goal:** Terminal-based conversation interface like ChatGPT
+* **Deliverable:**
+  - `cli/chat.py`: Interactive REPL with Rich formatting
+  - Conversation history and context management
+  - Special commands: `/files`, `/sync`, `/status`, `/clear`
+  - Graceful error handling and user experience
 
-### Stage 6: Basic Chat Shell CLI
+### Stage 6: Vector Search & Context Retrieval
 
-* **Goal:** Build a REPL using Typer + Rich that accepts user prompts and displays raw LLM responses.
-* **Deliverable:** `mini-cursor chat` command working without tool execution.
+* **Goal:** Semantic search to find relevant code chunks for queries
+* **Deliverable:**
+  - `agent/search.py`: Vector similarity search
+  - `agent/context_builder.py`: Request specific code from client
+  - API endpoint: `POST /query` with embedding-based search
+  - Client code retrieval on-demand (never stored on server)
 
-### Stage 7: Implement Agent Tools
+### Stage 7: Agent Tools Implementation
 
-* **Goal:** Define and implement internal tools: `read_file`, `search_code`, `edit_file`.
-* **Deliverable:** `agent/tools.py` module with clear interfaces and integration tests.
+* **Goal:** Implement Cursor-style tools for code interaction
+* **Deliverable:**
+  - `agent/tools/read_file.py`: Read and display file contents
+  - `agent/tools/search_code.py`: Search across codebase
+  - `agent/tools/edit_file.py`: Apply code edits with validation  
+  - `agent/tools/list_files.py`: Browse project structure
+  - Tool validation and error handling
 
-### Stage 8: LLM + Tools Integration
+### Stage 8: LLM Integration & Tool Execution
 
-* **Goal:** Develop `call_llm_and_tools(prompt)` to construct prompts, call LLM, parse JSON, execute tools, and collect diffs.
-* **Deliverable:** CLI showing spinner and colored diffs (red/green) via Rich.
+* **Goal:** Orchestrate LLM with tool calls and response formatting
+* **Deliverable:**
+  - `agent/llm_client.py`: OpenAI/Claude integration with function calling
+  - `agent/orchestrator.py`: Parse tool calls, execute, format responses
+  - Rich terminal output: spinning indicators, colored diffs
+  - Tool execution results: green additions, red deletions
 
-### Stage 9: CI/CD & Documentation
+### Stage 9: Advanced Features & Polish
 
-* **Goal:** Add Dockerfile and GitHub Actions workflows for lint, tests, and build; write comprehensive README with flow diagrams and demo GIF.
-* **Deliverable:** Badges for build/test passing, Docker image, and polished documentation.
+* **Goal:** Add production-ready features and optimizations
+* **Deliverable:**
+  - `.cursorignore` support for sensitive files
+  - Large codebase optimizations (selective indexing)
+  - Error recovery and connection handling
+  - Performance monitoring and logging
+  - Configuration management
 
-### Stage 10: Iterate & Polish
+### Stage 10: Documentation & Demo
 
-* **Goal:** Gather feedback, refine CLI UX, adjust chunk sizing, improve prompts, and add features (chat history, extra commands).
-* **Deliverable:** v1.0 release with changelog and LinkedIn announcement.
+* **Goal:** Professional documentation with architecture diagrams
+* **Deliverable:**
+  - Comprehensive README with architecture explanation
+  - Mermaid diagrams showing client-server flow
+  - Demo video showing chat interaction and tool usage
+  - Performance benchmarks vs naive approaches
+  - Blog post about learnings from Cursor's architecture
 
 ---
 
-*Each stage delivers a minimal viable component, building confidence and skills incrementally while keeping costs minimal.*
+## Technical Implementation Details
+
+### Merkle Tree Structure (Corrected)
+```
+project/
+├── src/                    Hash(main.py + utils.py)
+│   ├── main.py            Hash(file content)
+│   └── utils.py           Hash(file content)  
+├── tests/                 Hash(test_main.py)
+│   └── test_main.py       Hash(file content)
+└── README.md              Hash(file content)
+
+Root Hash = Hash(src/ + tests/ + README.md)
+```
+
+### Client-Server Communication Flow
+```
+1. Client builds local Merkle tree
+2. POST /sync with tree structure  
+3. Server compares with its tree
+4. Returns list of changed files
+5. Client sends changed file contents
+6. Server reindexes only changes
+7. User asks question in chat
+8. Server does vector search
+9. Server requests specific code from client
+10. LLM processes with full context
+```
+
+### Agent Tools Output Format
+```bash
+👤 You: Add error handling to the login function
+
+🤖 Mini Cursor: I'll add try-catch error handling to the login function.
+
+🔧 Using tool: edit_file
+📁 File: src/auth.py
+📝 Changes:
+- def login(email, password):
++ def login(email, password):
++     try:
++         # Login logic here
++     except ValidationError as e:
++         logger.error(f"Login failed: {e}")
++         raise
+
+✅ File updated successfully!
+```
+
+---
+
+*This roadmap now correctly implements Cursor's architecture: client-side code, server-side indexing, Merkle tree sync, and interactive AI tools with rich terminal output.*
