@@ -1,114 +1,51 @@
 """Merkle Tree Node implementation."""
 
+from asyncio import streams
 import hashlib
 import re
-from typing import Optional
+from typing import Optional, Dict
 from .exceptions import InvalidHashError
 
 
 class MerkleNode:
     """
-    Represents a node in a Merkle Tree.
+    Represents a node in a Merkle Tree, a node can be a file (leaf) or a directory (internal).
     
     Can be either a leaf node (containing data hash) or internal node
     (containing hash of concatenated children hashes).
     """
-    
+
+    __slots__ = ["name", "path", "hash", "is_file", "children"]
+
     def __init__(
         self, 
-        hash_value: str,
-        left: Optional["MerkleNode"] = None,
-        right: Optional["MerkleNode"] = None,
-        is_leaf: bool = False
-    ):
-        """
-        Initialize a Merkle Tree node.
+        name: str, 
+        path: str, 
+        is_file: bool, 
+        children: Optional[Dict[str, "MerkleNode"]]
+    ) -> None:
         
-        Args:
-            hash_value: SHA-256 hash as hex string
-            left: Left child node (for internal nodes)
-            right: Right child node (for internal nodes)  
-            is_leaf: Whether this is a leaf node
-            
-        Raises:
-            InvalidHashError: If hash_value is not valid SHA-256 hex
-        """
-        self.hash = self._validate_hash(hash_value)
-        self.left = left
-        self.right = right
-        self.is_leaf = is_leaf
+        self.name = name
+        self.path = path
+        self.is_file = is_file
+        self.children = children
+
+        self._hash_calculated = False
+        self._hash = None
+
+    @classmethod
+    def create_file_node(cls, name: str, path: str, hash: str) -> "MerkleNode":
+        return cls(name, path, hash, True, None)
     
-    @staticmethod
-    def _validate_hash(hash_value: str) -> str:
-        """
-        Validate that the provided hash is a valid SHA-256 hex string.
-        
-        Args:
-            hash_value: Hash string to validate
-            
-        Returns:
-            The validated hash string
-            
-        Raises:
-            InvalidHashError: If hash is not valid SHA-256 hex
-        """
-        if not isinstance(hash_value, str):
-            raise InvalidHashError(f"Hash must be string, got {type(hash_value)}")
-            
-        # SHA-256 produces 64 character hex string
-        if len(hash_value) != 64:
-            raise InvalidHashError(f"SHA-256 hash must be 64 characters, got {len(hash_value)}")
-            
-        # Check if it's valid hexadecimal
-        if not re.match(r'^[a-fA-F0-9]{64}$', hash_value):
-            raise InvalidHashError(f"Hash must be valid hexadecimal: {hash_value}")
-            
-        return hash_value.lower()
+    @classmethod
+    def create_directory_node(cls, name: str, path: str, children: Dict[str, "MerkleNode"]) -> "MerkleNode":
+        return cls(name, path, False, children)
+
+    @property
+    def hash(self) -> str:
+        pass
     
-    @staticmethod
-    def create_leaf(data_hash: str) -> "MerkleNode":
-        """
-        Create a leaf node from a data hash.
-        
-        Args:
-            data_hash: SHA-256 hash of the data chunk
-            
-        Returns:
-            New leaf node
-        """
-        return MerkleNode(data_hash, is_leaf=True)
-    
-    @staticmethod
-    def create_internal(left: "MerkleNode", right: "MerkleNode") -> "MerkleNode":
-        """
-        Create an internal node from two child nodes.
-        
-        Args:
-            left: Left child node
-            right: Right child node
-            
-        Returns:
-            New internal node with hash of concatenated child hashes
-        """
-        # Concatenate child hashes and compute SHA-256
-        combined_hash = left.hash + right.hash
-        parent_hash = hashlib.sha256(combined_hash.encode('utf-8')).hexdigest()
-        
-        return MerkleNode(parent_hash, left=left, right=right, is_leaf=False)
-    
-    def __str__(self) -> str:
-        """String representation of the node."""
-        node_type = "Leaf" if self.is_leaf else "Internal"
-        return f"{node_type}Node(hash={self.hash[:8]}...)"
-    
-    def __repr__(self) -> str:
-        """Developer representation of the node."""
-        return (f"MerkleNode(hash='{self.hash}', "
-                f"is_leaf={self.is_leaf}, "
-                f"has_children={self.left is not None})")
-    
-    def __eq__(self, other) -> bool:
-        """Check equality based on hash value."""
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, MerkleNode):
             return False
-        return self.hash == other.hash 
+        return self.name == other.name and self.path == other.path and self.is_file == other.is_file and self.children == other.children
