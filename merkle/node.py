@@ -47,4 +47,4 @@ class MerkleNode:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MerkleNode):
             return False
-        return self.name == other.name and self.path == other.path and self.is_file == other.is_file and self.children == other.children
+        return self.hash == other.hash
