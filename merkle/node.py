@@ -15,35 +15,34 @@ class MerkleNode:
     (containing hash of concatenated children hashes).
     """
 
-    __slots__ = ["name", "path", "hash", "is_file", "children"]
+    __slots__ = ["name", "path", "hash", "children"]
 
     def __init__(
         self, 
         name: str, 
-        path: str, 
-        is_file: bool, 
+        path: str,
+        hash: str,
         children: Optional[Dict[str, "MerkleNode"]]
     ) -> None:
         
         self.name = name
         self.path = path
-        self.is_file = is_file
+        self.hash = hash
         self.children = children
 
-        self._hash_calculated = False
-        self._hash = None
+    def _validate_hash(self, hash: str) -> None:
+        if not re.match(r"^[0-9a-fA-F]{64}$", hash):
+            raise InvalidHashError(f"Invalid hash: {hash}")
 
     @classmethod
     def create_file_node(cls, name: str, path: str, hash: str) -> "MerkleNode":
-        return cls(name, path, hash, True, None)
+        cls._validate_hash(hash)
+        return cls(name, path, hash, hash)
     
     @classmethod
-    def create_directory_node(cls, name: str, path: str, children: Dict[str, "MerkleNode"]) -> "MerkleNode":
-        return cls(name, path, False, children)
-
-    @property
-    def hash(self) -> str:
-        pass
+    def create_directory_node(cls, name: str, path: str, combined_hash: str, children: Dict[str, "MerkleNode"]) -> "MerkleNode":
+        cls._validate_hash(combined_hash)
+        return cls(name, path, combined_hash, children)
     
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, MerkleNode):
