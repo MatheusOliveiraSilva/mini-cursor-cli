@@ -33,19 +33,19 @@ class MerkleTree:
             file_hash = hashlib.sha256(open(path, "rb").read()).hexdigest()
             return MerkleNode.create_file_node(file, path, file_hash)
 
-        children: Dict[str, MerkleNode] = {}
+        childrens: Dict[str, MerkleNode] = {}
         childrens_hash: List[str] = []
         for file in os.listdir(path):
             if file in self.ignored_patterns:
                 continue
             child_path = os.path.join(path, file)
-            children[file] = self._build_tree_recursive(child_path)
-            childrens_hash.append(children[file].hash)
+            childrens[file] = self._build_tree_recursive(child_path)
+            childrens_hash.append(childrens[file].hash)
 
         childrens_hash.sort()
         childrens_hash = "".join(childrens_hash)
         combined_hash = hashlib.sha256(childrens_hash.encode()).hexdigest()
-        return MerkleNode.create_directory_node(file, path, combined_hash, children)
+        return MerkleNode.create_directory_node(file, path, combined_hash, childrens)
     
     def __str__(self) -> str:
         """String representation of the tree."""
