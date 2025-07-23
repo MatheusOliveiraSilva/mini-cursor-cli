@@ -20,7 +20,6 @@ class MerkleTree:
             ".env", ".gitignore", ".git", ".DS_Store",
              "__pycache__", ".venv", "venv"
         }
-        
         if root_path:
             self.build_from_directory(root_path)
 
@@ -41,28 +40,26 @@ class MerkleTree:
             with open(path, "rb") as f:
                 content = f.read()
             file_hash = hashlib.sha256(content).hexdigest()
-            return MerkleNode.create_file(name, path, file_hash)
+            return MerkleNode.create_file_node(name, path, file_hash)
         
-        # Directory node - hash children
         children = {}
-        for item in sorted(os.listdir(path)):  # Sort for deterministic hash
+        child_hashes = []
+        for item in sorted(os.listdir(path)):
             if item in self.ignored_patterns:
                 continue
             
             child_path = os.path.join(path, item)
             try:
                 children[item] = self._build_recursive(child_path)
+                child_hashes.append(children[item].hash)
             except (OSError, PermissionError):
-                # Skip files we can't read
                 continue
         
-        # Calculate directory hash from children
-        child_hashes = [child.hash for child in children.values()]
-        child_hashes.sort()  # Ensure deterministic hash
+        child_hashes.sort()
         combined = "|".join(child_hashes)
-        dir_hash = hashlib.sha256(combined.encode()).hexdigest()
+        dir_hash = hashlib.sha256(combined.encode('utf-8')).hexdigest()
         
-        return MerkleNode.create_directory(name, path, dir_hash, children)
+        return MerkleNode.create_directory_node(name, path, dir_hash, children)
 
     def get_root_hash(self) -> str:
         """Get the root hash of the tree."""
@@ -165,7 +162,7 @@ class MerkleTree:
     def _node_from_dict(cls, data: Dict) -> MerkleNode:
         """Reconstruct node from dictionary recursively."""
         if data["is_file"]:
-            return MerkleNode.create_file(
+            return MerkleNode.create_file_node(
                 data["name"], 
                 data["path"], 
                 data["hash"]
@@ -178,7 +175,7 @@ class MerkleTree:
                     for name, child_data in data["children"].items()
                 }
             
-            return MerkleNode.create_directory(
+            return MerkleNode.create_directory_node(
                 data["name"],
                 data["path"], 
                 data["hash"],
